@@ -80,6 +80,11 @@ class SignUpUI extends StatelessWidget {
                               }
                             }),
                   FormVerticalSpace(),
+                  PrimaryButton(
+                    labelText: 'GOOGLE SING UP',
+                    onPressed: () => authController.signInWithGoogle(),
+                  ),
+                  FormVerticalSpace(),
                   LabelButton(
                     labelText: 'auth.signInLabelButton'.tr,
                     onPressed: () => Get.to(SignInUI()),

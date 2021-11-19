@@ -21,6 +21,7 @@ class AuthController extends GetxController {
   TextEditingController passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
   Rxn<User> firebaseUser = Rxn<User>();
   Rxn<UserModel> firestoreUser = Rxn<UserModel>();
   final RxBool admin = false.obs;
@@ -252,6 +253,39 @@ class AuthController extends GetxController {
     update();
   }
 
+  Future signInWithGoogle() async {
+    // Trigger the authentication flow
+    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+    // Obtain the auth details from the request
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser!.authentication;
+
+    // Create a new credential
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    // Once signed in, return the UserCredential
+    return await _auth.signInWithCredential(credential).whenComplete(() {
+      UserModel _newUser = UserModel(
+        uid: googleUser.id,
+        email: googleUser.email,
+        name: googleUser.displayName!,
+        photoUrl: googleUser.photoUrl!,
+      );
+      _createUserFirestore(_newUser, _auth.currentUser!);
+      // FirebaseFirestore.instance.collection("users")
+      //   .doc('${_firebaseUser.uid}').set({
+      //   'uid': _auth.currentUser!.uid,
+      //   'image': googleUser.photoUrl,
+      //   'name': googleUser.displayName,
+      //   'email': googleUser.email
+      // });
+    });
+  }
+
   //password reset email
   Future<void> sendPasswordResetEmail(BuildContext context) async {
     showLoadingIndicator();
@@ -286,6 +320,11 @@ class AuthController extends GetxController {
       }
       update();
     });
+  }
+
+  Future<void> signOutFromGoogle() async {
+    await _googleSignIn.signOut();
+    await _auth.signOut();
   }
 
   // Sign out

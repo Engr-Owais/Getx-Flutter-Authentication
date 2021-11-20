@@ -62,27 +62,19 @@ class SignUpUI extends StatelessWidget {
                   FormVerticalSpace(),
                   PrimaryButton(
                       labelText: 'auth.signUpButton'.tr,
-                      onPressed: authController.url.value == ""
-                          ? () {
-                              Get.snackbar("Error", "Please Select Any Image",
-                                  snackPosition: SnackPosition.BOTTOM,
-                                  duration: Duration(seconds: 5),
-                                  backgroundColor: Colors.red,
-                                  colorText:
-                                      Get.theme.snackBarTheme.actionTextColor);
-                            }
-                          : () async {
-                              if (_formKey.currentState!.validate()) {
-                                SystemChannels.textInput.invokeMethod(
-                                    'TextInput.hide'); //to hide the keyboard - if any
-                                authController
-                                    .registerWithEmailAndPassword(context);
-                              }
-                            }),
+                      onPressed: () async {
+                        if (_formKey.currentState!.validate()) {
+                          SystemChannels.textInput.invokeMethod(
+                              'TextInput.hide'); //to hide the keyboard - if any
+                          authController.registerWithEmailAndPassword(context);
+                        }
+                      }),
                   FormVerticalSpace(),
                   PrimaryButton(
                     labelText: 'GOOGLE SING UP',
-                    onPressed: () => authController.signInWithGoogle(),
+                    onPressed: () {
+                      authController.signInWithGoogle();
+                    },
                   ),
                   FormVerticalSpace(),
                   LabelButton(

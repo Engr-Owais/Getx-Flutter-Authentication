@@ -42,6 +42,7 @@ class SettingsUI extends StatelessWidget {
           trailing: ElevatedButton(
             onPressed: () {
               AuthController.to.signOut();
+              AuthController.to.signOutFromGoogle();
             },
             child: Text(
               'settings.signOut'.tr,

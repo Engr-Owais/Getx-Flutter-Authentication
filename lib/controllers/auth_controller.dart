@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geocoder/geocoder.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_starter/models/models.dart';
@@ -34,18 +36,24 @@ class AuthController extends GetxController {
   var name = ''.obs;
   var id = ''.obs;
   var image = ''.obs;
+  var address = ''.obs;
+  var latitude = ''.obs;
+  var longitude = ''.obs;
 
   @override
   void onInit() {
+    //getAddressBasedOnLocation();
     super.onInit();
   }
 
   @override
   void onReady() async {
     //run every time auth state changes
+
     ever(firebaseUser, handleAuthChanged);
 
     firebaseUser.bindStream(user);
+    //getAddressBasedOnLocation();
     googleSign = GoogleSignIn();
 
     super.onReady();
@@ -68,8 +76,12 @@ class AuthController extends GetxController {
 
     if (_firebaseUser == null) {
       print('Send to signin');
+      await getCurrentLocation();
+      await getAddressBasedOnLocation();
       Get.offAll(SignInUI());
     } else {
+      await getCurrentLocation();
+      await getAddressBasedOnLocation();
       Get.offAll(HomeUI());
     }
   }
@@ -99,11 +111,37 @@ class AuthController extends GetxController {
         storage.ref().child('uploads/${selectedImagePath.value}');
     UploadTask uploadTask = firebaseStorageRef.putFile(imageFile!);
     uploadTask.then((res) async {
-      String urlImg = await res.ref.getDownloadURL();
-      url.value = urlImg;
+      url.value = await res.ref.getDownloadURL();
+
       hideLoadingIndicator();
-      print("url.value ${url.value}");
     });
+  }
+
+  getCurrentLocation() async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      latitude.value = '${position.latitude}';
+      longitude.value = '${position.longitude}';
+    } catch (e) {
+      print("getCurrentLocation() Error: $e");
+    }
+  }
+
+  Future getAddressBasedOnLocation() async {
+    try {
+      final coordinates = new Coordinates(
+          double.parse(latitude.value), double.parse(longitude.value));
+
+      var addresses =
+          await Geocoder.local.findAddressesFromCoordinates(coordinates);
+
+      address.value = addresses.first.addressLine;
+      print("-------------------- ${address.value}");
+    } catch (e) {
+      print("getAddressBasedOnLocation Error: $e");
+    }
   }
 
   // Firebase user one-time fetch
@@ -153,6 +191,7 @@ class AuthController extends GetxController {
   registerWithEmailAndPassword(BuildContext context) async {
     showLoadingIndicator();
     try {
+      print("url.value ${url.value}");
       await _auth
           .createUserWithEmailAndPassword(
               email: emailController.text, password: passwordController.text)
@@ -161,11 +200,11 @@ class AuthController extends GetxController {
         print('email: ' + result.user!.email.toString());
 
         UserModel _newUser = UserModel(
-          uid: result.user!.uid,
-          email: result.user!.email!,
-          name: nameController.text,
-          photoUrl: url.value,
-        );
+            uid: result.user!.uid,
+            email: result.user!.email!,
+            name: nameController.text,
+            photoUrl: url.value,
+            adress: address.value);
         //create the user in firestore
 
         await _createUserFirestore(_newUser, result.user!);
@@ -274,15 +313,9 @@ class AuthController extends GetxController {
         email: googleUser.email,
         name: googleUser.displayName!,
         photoUrl: googleUser.photoUrl!,
+        adress: address.value,
       );
       _createUserFirestore(_newUser, _auth.currentUser!);
-      // FirebaseFirestore.instance.collection("users")
-      //   .doc('${_firebaseUser.uid}').set({
-      //   'uid': _auth.currentUser!.uid,
-      //   'image': googleUser.photoUrl,
-      //   'name': googleUser.displayName,
-      //   'email': googleUser.email
-      // });
     });
   }
 
@@ -324,7 +357,7 @@ class AuthController extends GetxController {
 
   Future<void> signOutFromGoogle() async {
     await _googleSignIn.signOut();
-    await _auth.signOut();
+    return _auth.signOut();
   }
 
   // Sign out
